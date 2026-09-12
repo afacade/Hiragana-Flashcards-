@@ -178,6 +178,50 @@
     return canonical.replace(/ou/g, 'o').replace(/oo/g, 'o').replace(/uu/g, 'u');
   }
 
+  /* ---------------------------------------------------------------------
+   * Splitting a reading into syllables, for the word-tile builder.
+   * Works on the romaji rather than the kana, so a particle already read
+   * aloud ("konnichiwa") splits the way it is said, not the way it is spelled.
+   * ------------------------------------------------------------------- */
+
+  var LONG_VOWEL = { ou: 1, oo: 1, uu: 1, ee: 1, aa: 1, ii: 1, ei: 1 };
+
+  /**
+   * "gakkou" → ["gak", "kou"],  "konnichiwa" → ["kon", "ni", "chi", "wa"]
+   * A doubled consonant or a syllable-final n closes the previous syllable,
+   * which is how a reader would hyphenate the word.
+   */
+  function syllables(reading) {
+    var word = (reading || '').toLowerCase().replace(/[^a-z]/g, '');
+    var out = [];
+    var i = 0;
+
+    while (i < word.length) {
+      var onset = '';
+      while (i < word.length && 'aiueo'.indexOf(word[i]) === -1) { onset += word[i]; i += 1; }
+
+      if (i >= word.length) {
+        // Trailing consonant, e.g. the n of "shashin".
+        if (out.length) out[out.length - 1] += onset;
+        else if (onset) out.push(onset);
+        break;
+      }
+
+      var vowel = word[i];
+      i += 1;
+      if (i < word.length && LONG_VOWEL[vowel + word[i]]) { vowel += word[i]; i += 1; }
+
+      // A doubled consonant, or an n before another consonant, belongs to the
+      // syllable that came before it.
+      if (out.length && onset.length > 1 && (onset[0] === onset[1] || onset[0] === 'n')) {
+        out[out.length - 1] += onset[0];
+        onset = onset.slice(1);
+      }
+      out.push(onset + vowel);
+    }
+    return out;
+  }
+
   /** Levenshtein distance, capped — used only to say "looks like a typo". */
   function editDistance(a, b) {
     if (Math.abs(a.length - b.length) > 2) return 99;
@@ -243,6 +287,7 @@
     table: KANA,
     kanaToRomaji: kanaToRomaji,
     normalize: normalize,
+    syllables: syllables,
     checkAnswer: checkAnswer,
     editDistance: editDistance
   };

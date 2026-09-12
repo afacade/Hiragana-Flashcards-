@@ -91,11 +91,13 @@
         <div class="prompt-hint" id="prompt-hint"></div>
       </div>
 
-      <form class="answer-form" id="answer-form" autocomplete="off">
+      <!-- One of these three is shown, depending on the answering mode. -->
+      <form class="answer-form" id="answer-form" autocomplete="off" hidden>
         <input
           id="answer-input"
           type="text"
           inputmode="latin"
+          enterkeyhint="go"
           autocomplete="off"
           autocorrect="off"
           autocapitalize="off"
@@ -105,11 +107,21 @@
         <button class="btn primary" id="answer-submit" type="submit">Check</button>
       </form>
 
+      <div class="choices" id="choices" role="group" aria-label="Pick the reading" hidden></div>
+
+      <div class="builder" id="builder" hidden>
+        <div class="slots" id="slots" aria-label="Your answer"></div>
+        <div class="bank" id="bank" role="group" aria-label="Tap the reading in order"></div>
+        <button class="btn primary wide" id="builder-check" type="button" disabled>Check</button>
+      </div>
+
       <div class="feedback" id="feedback" aria-live="polite"></div>
+
+      <button class="btn primary wide" id="next-btn" type="button" hidden>Next</button>
 
       <div class="study-tools">
         <button class="link-btn" id="reveal-btn">I don't know</button>
-        <span class="kbd-hint"><kbd>Enter</kbd> to check, <kbd>Enter</kbd> again to continue</span>
+        <span class="kbd-hint" id="kbd-hint"></span>
       </div>
     </div>
   </section>
@@ -193,6 +205,22 @@
       </fieldset>
 
       <fieldset class="field-group">
+        <legend>How you answer</legend>
+        <label class="switch-row">
+          <input type="radio" name="answer-mode" value="tap">
+          <span>Tap to answer<small>Four choices on Level 1, word tiles on Level 2.</small></span>
+        </label>
+        <label class="switch-row">
+          <input type="radio" name="answer-mode" value="mixed">
+          <span>Tap on Level 1, type on Level 2<small>Recognise the characters, spell out the words.</small></span>
+        </label>
+        <label class="switch-row">
+          <input type="radio" name="answer-mode" value="type">
+          <span>Type the reading<small>Hardest, and the best practice on a real keyboard.</small></span>
+        </label>
+      </fieldset>
+
+      <fieldset class="field-group">
         <legend>Session</legend>
         <label class="range-row">
           <span>New cards per session <b id="val-new">8</b></span>
@@ -242,6 +270,7 @@
 <div class="toast" id="toast" hidden></div>
 
 <script src="js/romaji.js"></script>
+<script src="js/choices.js"></script>
 <script src="js/data-kana.js"></script>
 <script src="js/data-words.js"></script>
 <script src="js/srs.js"></script>

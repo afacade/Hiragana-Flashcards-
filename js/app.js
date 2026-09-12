@@ -13,6 +13,14 @@
   var phase = 'ask';       // 'ask' | 'answered'
   var advanceTimer = null;
   var currentView = 'home';
+  var mode = 'tap';            // how the current card is answered
+  var placed = [];             // tiles dropped into slots, Level 2
+  var puzzle = null;           // {slots, bank} for the current Level 2 card
+
+  // A touch device only raises its keyboard for a real gesture, so focus is
+  // never forced here — see the input's click handler for the rest.
+  var isTouch = typeof window.matchMedia === 'function'
+    && window.matchMedia('(pointer: coarse)').matches;
   var selectedKana = null;   // chart tile whose detail is open
 
   /* ------------------------------ utilities ------------------------- */
@@ -181,16 +189,114 @@
 
     $('#prompt-card').className = 'prompt-card';
     $('#feedback').innerHTML = '';
+    $('#reveal-btn').hidden = false;
+    $('#next-btn').hidden = true;
+    $('#builder-check').hidden = false;
+
+    mode = modeFor(session.level);
+    renderAnswerArea(item);
+    updateStudyBar();
+  }
+
+  /** Typing, four-way choice or word tiles, per the setting and the level. */
+  function modeFor(level) {
+    var setting = Store.settings().answerMode;
+    if (setting === 'type') return 'type';
+    if (setting === 'mixed') return level === 1 ? 'choice' : 'type';
+    return level === 1 ? 'choice' : 'tiles';
+  }
+
+  function renderAnswerArea(item) {
+    $('#answer-form').hidden = mode !== 'type';
+    $('#choices').hidden = mode !== 'choice';
+    $('#builder').hidden = mode !== 'tiles';
+    $('#kbd-hint').textContent = mode === 'type'
+      ? 'Enter to check, Enter again to continue'
+      : 'Enter for the next card';
+
+    if (mode === 'type') renderTyping();
+    else if (mode === 'choice') renderChoices(item);
+    else renderTiles(item);
+  }
+
+  function renderTyping() {
     var input = $('#answer-input');
     input.value = '';
-    input.readOnly = false;
     input.classList.remove('locked');
     input.placeholder = session.level === 1 ? 'type the reading…' : 'type the whole reading…';
     $('#answer-submit').textContent = 'Check';
-    $('#reveal-btn').hidden = false;
-    input.focus();
+    // Forcing focus on a phone leaves the field focused with the keyboard
+    // dismissed, and a tap on an already-focused field opens nothing.
+    if (!isTouch) input.focus();
+  }
 
-    updateStudyBar();
+  function renderChoices(item) {
+    var box = $('#choices');
+    box.innerHTML = '';
+    var picked = Choices.options(item, Session.pool(session.level), 4);
+    picked.options.forEach(function (reading) {
+      var btn = el('button', 'choice', reading);
+      btn.type = 'button';
+      btn.dataset.reading = reading;
+      btn.addEventListener('click', function () {
+        if (phase !== 'ask') return;
+        answerWith(reading);
+      });
+      box.appendChild(btn);
+    });
+  }
+
+  function renderTiles(item) {
+    puzzle = Choices.tiles(item, Session.pool(session.level));
+    placed = [];
+    drawPuzzle();
+  }
+
+  function drawPuzzle() {
+    var slots = $('#slots');
+    slots.innerHTML = '';
+    puzzle.slots.forEach(function (_, i) {
+      var slot = el('button', 'slot');
+      slot.type = 'button';
+      if (placed[i]) {
+        slot.textContent = placed[i].text;
+        slot.classList.add('filled');
+        slot.addEventListener('click', function () {
+          if (phase !== 'ask') return;
+          placed.splice(i, 1);        // take it back, close the gap
+          drawPuzzle();
+        });
+      } else {
+        slot.classList.add('empty');
+        slot.disabled = true;
+        slot.textContent = '';
+      }
+      slots.appendChild(slot);
+    });
+
+    var bank = $('#bank');
+    bank.innerHTML = '';
+    puzzle.bank.forEach(function (text, index) {
+      var used = placed.some(function (p) { return p.index === index; });
+      var tile = el('button', 'tile' + (used ? ' used' : ''), text);
+      tile.type = 'button';
+      tile.disabled = used || phase !== 'ask';
+      tile.addEventListener('click', function () {
+        if (phase !== 'ask' || placed.length >= puzzle.slots.length) return;
+        placed.push({ index: index, text: text });
+        drawPuzzle();
+      });
+      bank.appendChild(tile);
+    });
+
+    var check = $('#builder-check');
+    check.disabled = placed.length !== puzzle.slots.length || phase !== 'ask';
+    check.textContent = placed.length === puzzle.slots.length
+      ? 'Check' : 'Tap the reading in order';
+  }
+
+  function assembled() {
+    return placed.map(function (p) { return p.text; }).join(' ');
   }
 
   function updateStudyBar() {
@@ -204,20 +310,26 @@
   function submitAnswer() {
     if (phase === 'answered') { nextCard(); return; }
 
-    var input = $('#answer-input');
-    var typed = input.value.trim();
-    if (!typed) return;
+    if (mode === 'type') {
+      var typed = $('#answer-input').value.trim();
+      if (typed) answerWith(typed);
+      return;
+    }
+    if (mode === 'tiles' && placed.length === puzzle.slots.length) answerWith(assembled());
+  }
 
+  /** One grading path for typing, choices and tiles alike. */
+  function answerWith(given) {
     var item = current.item;
-    var verdict = Romaji.checkAnswer(typed, item.romaji, item.literal);
-
+    var verdict = Romaji.checkAnswer(given, item.romaji, item.literal);
     var correct = verdict.status === 'correct' || verdict.status === 'close';
+
     var gap = Session.answer(session, current.entry, correct);
-    revealFeedback(verdict, typed, gap);
+    revealFeedback(verdict, given, gap);
     beep(verdict.status === 'correct' ? 'correct' : correct ? 'close' : 'wrong');
 
     if (correct && verdict.status === 'correct' && Store.settings().autoAdvance) {
-      advanceTimer = setTimeout(nextCard, 750);
+      advanceTimer = setTimeout(nextCard, mode === 'type' ? 750 : 900);
     }
   }
 
@@ -226,13 +338,7 @@
     var item = current.item;
     var card = Store.card(item.id);
 
-    // readOnly rather than disabled: a disabled input receives no key events,
-    // which would silently break "Enter again to continue".
-    var input = $('#answer-input');
-    input.readOnly = true;
-    input.classList.add('locked');
-    input.focus();
-    $('#answer-submit').textContent = 'Next';
+    lockAnswerArea(verdict, typed);
     $('#reveal-btn').hidden = true;
 
     var tone = verdict.status === 'correct' ? 'correct'
@@ -269,7 +375,8 @@
 
     if (tone !== 'correct') {
       var actions = el('div', 'fb-actions');
-      if (verdict.status !== 'close') {
+      // Only typing can produce a typo; a tapped answer was meant.
+      if (verdict.status !== 'close' && mode === 'type') {
         var typoBtn = el('button', 'btn ghost', 'That was a typo — count it');
         typoBtn.type = 'button';
         typoBtn.addEventListener('click', function () {
@@ -301,6 +408,51 @@
     updateStudyBar();
   }
 
+  /**
+   * Freeze the answer controls and show what was right.
+   * The text input is deliberately never made readOnly: on a phone that
+   * dismisses the keyboard, and because the field keeps focus, tapping it
+   * afterwards is not a focus change and raises nothing.
+   */
+  function lockAnswerArea(verdict, given) {
+    var item = current.item;
+
+    if (mode === 'type') {
+      $('#answer-input').classList.add('locked');
+      $('#answer-submit').textContent = 'Next';
+      return;
+    }
+
+    if (mode === 'choice') {
+      $$('#choices .choice').forEach(function (btn) {
+        btn.disabled = true;
+        var reading = Romaji.normalize(btn.dataset.reading);
+        if (reading === Romaji.normalize(item.romaji)) btn.classList.add('correct');
+        else if (given && reading === Romaji.normalize(given)) btn.classList.add('wrong');
+      });
+      $('#next-btn').hidden = false;
+      return;
+    }
+
+    $$('#bank .tile').forEach(function (tile) { tile.disabled = true; });
+    $$('#slots .slot').forEach(function (slot, i) {
+      slot.disabled = true;
+      var want = puzzle.slots[i];
+      var got = placed[i] ? placed[i].text : null;
+      if (got === want) {
+        slot.classList.add('correct');
+      } else if (got === null) {
+        slot.textContent = want;             // revealed rather than answered
+        slot.classList.remove('empty');
+        slot.classList.add('revealed');
+      } else {
+        slot.classList.add(verdict.status === 'close' ? 'off' : 'wrong');
+      }
+    });
+    $('#builder-check').hidden = true;
+    $('#next-btn').hidden = false;
+  }
+
   function scheduleLine(card, gap) {
     if (gap !== null && gap !== undefined) return 'Back again in about ' + gap + ' cards';
     return 'Next review ' + SRS.dueLabel(card);
@@ -322,7 +474,8 @@
       return 'Long vowels count: ' + item.romaji + '.';
     }
     if (verdict.status === 'wrong' && typed) {
-      return 'You typed "' + typed + '".';
+      var verb = mode === 'type' ? 'typed' : mode === 'choice' ? 'picked' : 'built';
+      return 'You ' + verb + ' "' + typed + '".';
     }
     return null;
   }
@@ -612,6 +765,15 @@
       tierBox.appendChild(label);
     });
 
+    $$('input[name="answer-mode"]').forEach(function (radio) {
+      radio.checked = radio.value === Store.settings().answerMode;
+      radio.onchange = function () {
+        if (!radio.checked) return;
+        Store.settings().answerMode = radio.value;
+        Store.save();
+      };
+    });
+
     bindCheckbox('#opt-match', 'matchKanaProgress');
     bindCheckbox('#opt-auto', 'autoAdvance');
     bindCheckbox('#opt-meaning', 'showMeaningHint');
@@ -710,6 +872,21 @@
       submitAnswer();
     });
 
+    // A tap on a field that already holds focus is not a focus change, so the
+    // on-screen keyboard stays down. Dropping focus first makes it reopen.
+    $('#answer-input').addEventListener('click', function () {
+      if (document.activeElement === $('#answer-input')) {
+        $('#answer-input').blur();
+        $('#answer-input').focus();
+      }
+    });
+
+    $('#builder-check').addEventListener('click', function () {
+      if (phase === 'ask') submitAnswer();
+    });
+
+    $('#next-btn').addEventListener('click', nextCard);
+
     $('#reveal-btn').addEventListener('click', revealAnswer);
 
     $('#study-quit').addEventListener('click', function () {
@@ -743,6 +920,21 @@
         nextCard();
         return;
       }
+
+      if (!$('#view-study').hidden && phase === 'ask') {
+        // 1-4 pick a choice; Enter checks a finished row of tiles.
+        if (mode === 'choice' && /^[1-4]$/.test(e.key)) {
+          var buttons = $$('#choices .choice');
+          var target = buttons[parseInt(e.key, 10) - 1];
+          if (target) { e.preventDefault(); target.click(); }
+          return;
+        }
+        if (mode === 'tiles' && e.key === 'Enter') {
+          e.preventDefault();
+          submitAnswer();
+          return;
+        }
+      }
       if (e.key === 'Escape') {
         if (!$('#settings-modal').hidden) { closeSettings(); return; }
         if (!$('#view-study').hidden) {
@@ -751,7 +943,7 @@
         }
       }
       // Keep typing focused on the answer box during a session.
-      if (!$('#view-study').hidden && phase === 'ask'
+      if (mode === 'type' && !$('#view-study').hidden && phase === 'ask'
           && document.activeElement !== $('#answer-input')
           && e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
         $('#answer-input').focus();

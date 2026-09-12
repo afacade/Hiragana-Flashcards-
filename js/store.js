@@ -10,6 +10,7 @@
   var SRS = global.SRS;
 
   var DEFAULT_SETTINGS = {
+    answerMode: 'tap',            // 'tap' | 'mixed' | 'type'
     sets: { basic: true, dakuten: false, yoon: false },
     newPerSession: 8,
     maxReviews: 60,

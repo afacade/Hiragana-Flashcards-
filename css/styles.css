@@ -144,6 +144,13 @@ kbd {
   background: linear-gradient(160deg, var(--accent-2), #3fb8a6);
   box-shadow: 0 8px 20px rgba(90, 209, 192, .24);
 }
+/* A disabled primary button is a prompt, not a call to action — the builder's
+   button carries the "tap the reading in order" hint until the row is full. */
+.btn.primary:disabled {
+  background: var(--surface-2); color: var(--faint);
+  border-color: var(--line-soft); box-shadow: none; cursor: default;
+  font-weight: 500;
+}
 .btn.ghost { background: transparent; color: var(--muted); }
 .btn.ghost:hover { color: var(--text); background: var(--surface-2); }
 .btn.danger-ghost { background: transparent; border-color: rgba(255,107,107,.3); color: #ffa5a5; }
@@ -282,6 +289,71 @@ kbd {
 #answer-input::placeholder { color: var(--faint); }
 #answer-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(123,140,255,.16); }
 #answer-input.locked { opacity: .75; }
+
+/* ------------------------- choices & word tiles ---------------------- */
+
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+
+.choice {
+  font: inherit; font-size: 1.15rem; font-weight: 600;
+  padding: 1rem .8rem; min-height: 62px;
+  border-radius: 14px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--text);
+  cursor: pointer; transition: transform .08s ease, background .15s ease, border-color .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.choice:hover:not(:disabled) { background: var(--surface-3); border-color: var(--accent); }
+.choice:active:not(:disabled) { transform: translateY(1px); }
+.choice:disabled { cursor: default; opacity: .5; }
+.choice.correct {
+  opacity: 1; border-color: var(--good); color: var(--good);
+  background: rgba(61, 220, 151, .12);
+}
+.choice.wrong {
+  opacity: 1; border-color: var(--bad); color: var(--bad);
+  background: rgba(255, 107, 107, .12);
+}
+
+.builder { display: flex; flex-direction: column; gap: .9rem; }
+
+.slots {
+  display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
+  min-height: 56px; padding: .5rem;
+  border-radius: 14px; border: 1px dashed var(--line);
+  background: rgba(255, 255, 255, .015);
+}
+.slot {
+  font: inherit; font-size: 1rem; font-weight: 600;
+  padding: .5rem .7rem; min-height: 40px; min-width: 56px;
+  border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--text); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.slot.empty {
+  border-style: dashed; background: transparent;
+  min-width: 62px; cursor: default;
+}
+.slot.correct { border-color: var(--good); color: var(--good); background: rgba(61,220,151,.1); }
+.slot.wrong { border-color: var(--bad); color: var(--bad); background: rgba(255,107,107,.1); }
+.slot.off { border-color: var(--warn); color: var(--warn); background: rgba(240,182,75,.1); }
+.slot.revealed { border-color: var(--line); color: var(--muted); border-style: dashed; }
+
+.bank { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
+.tile {
+  font: inherit; font-size: 1rem; font-weight: 600;
+  padding: .55rem .85rem; min-height: 44px;
+  border-radius: 11px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--text); cursor: pointer;
+  transition: transform .08s ease, background .15s ease, border-color .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.tile:hover:not(:disabled) { background: var(--surface-3); border-color: var(--accent); }
+.tile:active:not(:disabled) { transform: translateY(1px); }
+.tile.used { opacity: .22; cursor: default; }
+.tile:disabled:not(.used) { opacity: .45; cursor: default; }
+
+.btn.wide { width: 100%; }
+#next-btn { margin-top: .2rem; }
 
 .feedback { min-height: 92px; margin-top: .9rem; }
 .fb {
@@ -484,6 +556,7 @@ kbd {
 }
 
 @media (max-width: 420px) {
+  .choice { font-size: 1.05rem; padding: .85rem .6rem; }
   .chart-grid { gap: .3rem; }
   .kana-tile .r { font-size: .58rem; }
   .level-actions { flex-direction: column; }

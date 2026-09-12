@@ -1,0 +1,13 @@
+{
+  "name": "Hiragana Trainer",
+  "short_name": "Hiragana",
+  "description": "Learn to read hiragana with spaced-repetition flashcards and typing practice.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0e1015",
+  "theme_color": "#0e1015",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

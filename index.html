@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hiragana Trainer</title>
+<meta name="description" content="Learn to read hiragana with spaced-repetition flashcards and typing practice.">
+<meta name="theme-color" content="#0e1015">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <button class="brand" data-go="home" title="Home">
+    <span class="brand-mark">ひ</span>
+    <span class="brand-text">Hiragana Trainer</span>
+  </button>
+  <nav class="topnav">
+    <button class="nav-btn" data-go="chart">Chart</button>
+    <button class="nav-btn" data-go="stats">Stats</button>
+    <button class="nav-btn" id="open-settings">Settings</button>
+  </nav>
+</header>
+
+<main id="main">
+
+  <!-- ================= HOME ================= -->
+  <section class="view" id="view-home">
+    <div class="hero">
+      <h1>Read hiragana, one card at a time</h1>
+      <p class="sub">Miss a character and it comes straight back. Get it right again and again and it fades into the background.</p>
+    </div>
+
+    <div class="stat-strip" id="home-stats"></div>
+
+    <div class="levels">
+      <article class="level-card" id="level-1-card">
+        <div class="level-head">
+          <span class="level-tag">Level 1</span>
+          <h2>Hiragana characters</h2>
+        </div>
+        <p class="level-desc">A single kana appears. Type how it is read.</p>
+        <div class="sample" lang="ja" aria-hidden="true"><span>あ</span><span>き</span><span>ぬ</span><span>ぽ</span><span>しゃ</span></div>
+        <div class="meter"><div class="meter-fill" id="l1-meter"></div></div>
+        <p class="meter-label" id="l1-progress"></p>
+        <div class="pill-row" id="l1-counts"></div>
+        <div class="level-actions">
+          <button class="btn primary" data-start="1">Start studying</button>
+          <button class="btn ghost" data-go="chart">See chart</button>
+        </div>
+      </article>
+
+      <article class="level-card" id="level-2-card">
+        <div class="level-head">
+          <span class="level-tag alt">Level 2</span>
+          <h2>Words &amp; sentences</h2>
+        </div>
+        <p class="level-desc">Read a whole word or sentence and type it out.</p>
+        <div class="sample small" lang="ja" aria-hidden="true"><span>ねこ</span><span>がっこう</span><span>ありがとう</span></div>
+        <div class="meter"><div class="meter-fill alt" id="l2-meter"></div></div>
+        <p class="meter-label" id="l2-progress"></p>
+        <div class="pill-row" id="l2-counts"></div>
+        <div class="level-actions">
+          <button class="btn primary alt" data-start="2">Start studying</button>
+          <button class="btn ghost" data-go="stats">See progress</button>
+        </div>
+      </article>
+    </div>
+
+    <p class="tiny-note">Everything is stored in this browser only. Nothing is uploaded.</p>
+  </section>
+
+  <!-- ================= STUDY ================= -->
+  <section class="view" id="view-study" hidden>
+    <div class="study-bar">
+      <button class="icon-btn" id="study-quit" title="End session">&larr;</button>
+      <div class="progress"><div class="progress-fill" id="study-progress"></div></div>
+      <div class="study-counts">
+        <span id="study-remaining">0 left</span>
+        <span class="sep">·</span>
+        <span id="study-score">0%</span>
+      </div>
+    </div>
+
+    <div class="card-stage">
+      <div class="prompt-card" id="prompt-card">
+        <div class="prompt-meta" id="prompt-meta"></div>
+        <div class="prompt-kana" id="prompt-kana" lang="ja">あ</div>
+        <div class="prompt-hint" id="prompt-hint"></div>
+      </div>
+
+      <form class="answer-form" id="answer-form" autocomplete="off">
+        <input
+          id="answer-input"
+          type="text"
+          inputmode="latin"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="type the reading…"
+          aria-label="Type the reading in romaji">
+        <button class="btn primary" id="answer-submit" type="submit">Check</button>
+      </form>
+
+      <div class="feedback" id="feedback" aria-live="polite"></div>
+
+      <div class="study-tools">
+        <button class="link-btn" id="reveal-btn">I don't know</button>
+        <span class="kbd-hint"><kbd>Enter</kbd> to check, <kbd>Enter</kbd> again to continue</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SUMMARY ================= -->
+  <section class="view" id="view-summary" hidden>
+    <div class="summary-wrap">
+      <div class="summary-ring" id="summary-ring">
+        <span id="summary-pct">0%</span>
+        <small>correct</small>
+      </div>
+      <h2 id="summary-title">Session complete</h2>
+      <p class="sub" id="summary-sub"></p>
+      <div class="summary-grid" id="summary-grid"></div>
+      <div id="summary-misses"></div>
+      <div class="summary-actions">
+        <button class="btn primary" id="summary-again">Keep going</button>
+        <button class="btn ghost" data-go="home">Back home</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CHART ================= -->
+  <section class="view" id="view-chart" hidden>
+    <div class="view-head">
+      <h2>Hiragana chart</h2>
+      <p class="sub">Colour shows how well each character is sticking. Tap one for its stats.</p>
+    </div>
+    <div class="legend" id="chart-legend"></div>
+    <div id="chart-body"></div>
+  </section>
+
+  <!-- ================= STATS ================= -->
+  <section class="view" id="view-stats" hidden>
+    <div class="view-head">
+      <h2>Your progress</h2>
+      <p class="sub">Reviews counted from the day you started.</p>
+    </div>
+    <div class="stat-strip" id="stats-strip"></div>
+    <section class="panel">
+      <h3>Last 12 weeks</h3>
+      <div class="heatmap" id="heatmap"></div>
+      <div class="heat-key"><span>less</span><i data-h="0"></i><i data-h="1"></i><i data-h="2"></i><i data-h="3"></i><i data-h="4"></i><span>more</span></div>
+    </section>
+    <section class="panel">
+      <h3>Level 1 — characters</h3>
+      <div id="stats-l1"></div>
+    </section>
+    <section class="panel">
+      <h3>Level 2 — words &amp; sentences</h3>
+      <div id="stats-l2"></div>
+    </section>
+  </section>
+
+</main>
+
+<!-- ================= SETTINGS ================= -->
+<div class="modal-backdrop" id="settings-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="modal-head">
+      <h2 id="settings-title">Settings</h2>
+      <button class="icon-btn" id="close-settings" title="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+
+      <fieldset class="field-group">
+        <legend>Level 1 — which kana to study</legend>
+        <div id="set-toggles"></div>
+      </fieldset>
+
+      <fieldset class="field-group">
+        <legend>Level 2 — which material</legend>
+        <div id="tier-toggles"></div>
+        <label class="switch-row">
+          <input type="checkbox" id="opt-match">
+          <span>
+            Only use words whose kana I've started learning
+            <small>Keeps Level 2 in step with Level 1.</small>
+          </span>
+        </label>
+      </fieldset>
+
+      <fieldset class="field-group">
+        <legend>Session</legend>
+        <label class="range-row">
+          <span>New cards per session <b id="val-new">8</b></span>
+          <input type="range" id="opt-new" min="0" max="25" step="1">
+        </label>
+        <label class="range-row">
+          <span>Maximum reviews per session <b id="val-max">60</b></span>
+          <input type="range" id="opt-max" min="10" max="150" step="5">
+        </label>
+        <label class="switch-row">
+          <input type="checkbox" id="opt-auto">
+          <span>Advance automatically after a correct answer<small>Wrong answers always wait for you.</small></span>
+        </label>
+        <label class="switch-row">
+          <input type="checkbox" id="opt-meaning">
+          <span>Show the meaning before answering<small>Level 2 only.</small></span>
+        </label>
+        <label class="switch-row">
+          <input type="checkbox" id="opt-sound">
+          <span>Sound effects</span>
+        </label>
+      </fieldset>
+
+      <fieldset class="field-group">
+        <legend>Your data</legend>
+        <div class="btn-row">
+          <button class="btn ghost" id="export-btn">Export progress</button>
+          <button class="btn ghost" id="import-btn">Import progress</button>
+          <input type="file" id="import-file" accept="application/json,.json" hidden>
+        </div>
+        <div class="btn-row">
+          <button class="btn danger-ghost" data-reset="1">Reset Level 1</button>
+          <button class="btn danger-ghost" data-reset="2">Reset Level 2</button>
+          <button class="btn danger-ghost" data-reset="all">Reset everything</button>
+        </div>
+        <p class="tiny-note" id="data-note"></p>
+      </fieldset>
+
+    </div>
+  </div>
+</div>
+
+<!-- Outside the views: a .view animates transform, which would make it the
+     containing block for anything position:fixed inside it. -->
+<div class="kana-detail" id="kana-detail" hidden></div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/romaji.js"></script>
+<script src="js/data-kana.js"></script>
+<script src="js/data-words.js"></script>
+<script src="js/srs.js"></script>
+<script src="js/store.js"></script>
+<script src="js/session.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
